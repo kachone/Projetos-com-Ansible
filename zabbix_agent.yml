@@ -1,0 +1,51 @@
+- name: instalar o agent zabbix na outra maquina
+  hosts: my_host_02
+  become: yes
+
+  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+  
+  tasks:
+
+    - name: Baixar repositório do Zabbix 7.0
+      ansible.builtin.dnf:
+        name: "https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/zabbix-release-latest.el9.noarch.rpm"
+        state: present
+        disable_gpg_check: yes
+
+    - name: Limpar cache do dnf
+      ansible.builtin.command: dnf clean all
+
+    - name: Instalar Zabbix Agent 2
+      ansible.builtin.dnf:
+        name: zabbix-agent2
+        state: present
+
+    - name: Configurar zabbix_agent2.conf
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_agent2.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^Server=', line: 'Server=10.113.50.62' }
+        - { regexp: '^ServerActive=', line: 'ServerActive=10.113.50.62' }
+        - { regexp: '^Hostname=', line: 'Hostname={{ inventory_hostname }}' }
+      notify: Restart zabbix-agent2
+
+    - name: Liberar porta 10050 no firewall
+      ansible.posix.firewalld:
+        port: 10050/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Habilitar e iniciar Zabbix Agent 2
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart zabbix-agent2
+      ansible.builtin.service:
+        name: zabbix-agent2
+        state: restarted

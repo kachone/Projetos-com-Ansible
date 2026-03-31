@@ -1,0 +1,70 @@
+- name: Instalar Grafana e integrar com Zabbix
+  hosts: my_host_01
+  become: yes
+  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+
+  tasks:
+
+    - name: Adicionar repositório do Grafana
+      ansible.builtin.copy:
+        dest: /etc/yum.repos.d/grafana.repo
+        content: |
+          [grafana]                          
+          name=grafana                           
+          baseurl=https://rpm.grafana.com      
+          repo_gpgcheck=1                    
+          enabled=1                            
+          gpgcheck=1
+          gpgkey=https://rpm.grafana.com/gpg.key      
+          sslverify=1                                 
+          sslcacert=/etc/pki/tls/certs/ca-bundle.crt 
+
+    # copy + content para criar o arquivo repositorio rpm.grafana.repo e colocar o conteudo dele dentro do arquivo
+
+    - name: Instalar Grafana
+      ansible.builtin.dnf:
+        name: grafana
+        state: present
+
+    - name: Instalar plugin Zabbix for Grafana
+      ansible.builtin.command:
+        cmd: grafana-cli plugins install alexanderzobnin-zabbix-app
+        creates: /var/lib/grafana/plugins/alexanderzobnin-zabbix-app
+
+    - name: Liberar porta 3000 no firewall
+      ansible.posix.firewalld:
+        port: 3000/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Habilitar e iniciar o Grafana
+      ansible.builtin.service:
+        name: grafana-server
+        state: started
+        enabled: yes
+
+    - name: Aguardar Grafana iniciar
+      ansible.builtin.wait_for:
+        port: "{{ grafana_port }}"   #  verifica se a porta 3000 esta funcionando
+        delay: 5                     #  espera 5 segundo assim que ligar a maquina para que o grafana suba totalmente
+        timeout: 60                  #  se passar de 60 segundos, ele da erro
+
+    - name: Configurar datasource do Zabbix no Grafana
+      ansible.builtin.uri:                                           #  Interage com serviços web HTTP e HTTPS e suporta mecanismos de autenticação HTTP Digest, Basic e WSSE.
+        url: "http://localhost:{{ grafana_port }}/api/datasources"   #  onde a api do grafana gerencia as datasources. Esta como localhost porque esta rodando na mesma maquina
+        method: POST                                                 #  post é para enviar dados 
+        user: admin
+        password: admin
+        force_basic_auth: yes                                        # obriga o ansible a enviar as credenciais na hora da requisição
+        body_format: json                                            # Formato do conteudo     
+        status_code: [200, 409]                                      # 409 = datasource já existe | 200 + datasource criada
+        body:
+          name: "Zabbix"                                             # nome da datasource que coleta e armazena dados para analise
+          type: "alexanderzobnin-zabbix-datasource"                  # Tipo da datasource e sera esse nome para identificar p plugin 
+          access: "proxy"
+          url: "{{ zabbix_api_url }}"
+          jsonData:
+            username: "{{ zabbix_api_user }}"
+          secureJsonData:
+            password: "{{ zabbix_api_password }}"

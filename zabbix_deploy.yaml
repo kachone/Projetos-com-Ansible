@@ -1,0 +1,125 @@
+- name: Provisionar Zabbix Server 
+  hosts: all
+  become: yes # executa como root
+
+  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+    
+  # INSTALAR REPOSITORIOS
+  tasks: # tarefa que sera feita
+    
+    - name: Instalar repositório EPEL (Necessário para dependências Python)
+      ansible.builtin.dnf: # Instala, atualiza, remove e lista pacotes e grupos usando o gerenciador de pacotes **dnf**.
+        name: oracle-epel-release-el9
+        state: present
+
+    - name: instalar o python3-PyMySQL
+      ansible.builtin.dnf:
+        name: python3-PyMySQL # arquivo para que o ansible consiga gerenciar o banco
+        state: present
+
+    - name: Baixar pacote do repositório oficial do Zabbix 7.0
+      ansible.builtin.dnf:
+        name: "https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/zabbix-release-latest.el9.noarch.rpm"
+        state: present
+        disable_gpg_check: yes
+
+    - name: limpar o cache do dnf
+      ansible.builtin.command: dnf clean all
+
+    # INSTALAÇÃO DOS ARQUIVOS
+    - name: instalar Zabbix server, agente e php
+      ansible.builtin.dnf:
+        name:
+          - zabbix-server-mysql # 
+          - zabbix-web-mysql    # interface web
+          - zabbix-nginx-conf   # configuração do nginx
+          - zabbix-sql-scripts  # scripts para criar as tabelas no banco
+          - zabbix-agent        # a agente que vai monitorar o porprio servidor
+          - mysql-server        # banco de dados
+          - zabbix-selinux-policy
+        state: present 
+        disablerepo: "ol9_developer_EPEL"
+      # garante que o arquivo esteja instalado
+
+    - name: Iniciar e habilitar MySQL
+      service:
+        name: mysqld
+        state: started
+        enabled: yes
+
+    - name: criar arquivo .my.cnf. para autenticação MySQL
+      ansible.builtin.copy:
+        dest:  /root/.my.cnf
+        content: |
+          [client]
+          user=root
+          password=
+          socket=/var/lib/mysql/mysql.sock
+        mode: '0600'
+        
+    - name: Habilitar log_bin_trust_function_creators
+      community.mysql.mysql_query:
+        query: "SET GLOBAL log_bin_trust_function_creators = 1"
+
+    # CONFIGURAÇÃO DO BANCO
+    - name: Criar banco de dados do Zabbix
+      community.mysql.mysql_db:
+        name: zabbix
+        encoding: utf8mb4       # faz com que o banco possa usar caracteres especiais nas suas tabelas
+        collation: utf8mb4_bin  # faz com que as letras maiusculas sejam de vistas de froma diferentes das letras minusculas
+        state: present          # Garante que o banco seja criado
+        login_unix_socket: /var/lib/mysql/mysql.sock # um arquivo que permite comunicação interna entre o banco e o cliente das outras aplicações
+
+    - name: Criar usuário do banco de dados
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: '{{ db_name }}.*:ALL'
+        state: present 
+        login_unix_socket: /var/lib/mysql/mysql.sock # arquivo que permite com que o ansible converse com a banco para criar o usuario
+
+    - name: Verificar se o schema inicial já foi importado
+      stat:
+        path: /var/lib/mysql/zabbix/hosts.ibd # Verifica se uma tabela existe
+      register: db_status
+
+    - name: Importar schema inicial do banco de dados
+      shell: "zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql -uzabbix -p{{ db_password }} zabbix"
+      when: not db_status.stat.exists
+
+      # CONFIGURAÇÕES
+    - name: Configurar senha do banco no Zabbix Server
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^# DBPassword='
+        line: "DBPassword={{ db_password }}"
+
+    - name: Configurar Nginx para o Zabbix
+      lineinfile:
+        path: /etc/nginx/conf.d/zabbix.conf
+        regexp: '^#        listen          8080;'
+        line: "        listen          80;"
+
+    # SERVIÇOS
+    - name: liberar porta 80 no firewall
+      ansible.posix.firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: potugues do brasil
+      ansible.builtin.dnf:
+        name: langpacks-pt_BR
+        state: present
+
+    - name: Reiniciar e habilitar serviços
+      service:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - zabbix-server
+        - zabbix-agent
+        - nginx
+        - php-fpm 
