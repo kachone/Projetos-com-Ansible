@@ -1,5 +1,5 @@
-- name: instalar o agent zabbix na outra maquina
-  hosts: my_host_02
+- name: agente_zabbix #maquina que sera monitorada
+  hosts: 
   become: yes
 
   vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
@@ -26,9 +26,9 @@
         regexp: "{{ item.regexp }}"
         line: "{{ item.line }}"
       loop:
-        - { regexp: '^Server=', line: 'Server=10.113.50.62' }
-        - { regexp: '^ServerActive=', line: 'ServerActive=10.113.50.62' }
-        - { regexp: '^Hostname=', line: 'Hostname={{ inventory_hostname }}' }
+        - { regexp: '^#?\s*Server=', line: 'Server={{ zabbix_server_ip }}' }
+        - { regexp: '^#?\s*ServerActive=', line: 'ServerActive={{ zabbix_server_ip }}' }
+        - { regexp: '^#?\s*Hostname=', line: 'Hostname={{ inventory_hostname }}' }
       notify: Restart zabbix-agent2
 
     - name: Liberar porta 10050 no firewall
