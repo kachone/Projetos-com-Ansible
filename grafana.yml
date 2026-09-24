@@ -1,5 +1,5 @@
 - name: Instalar Grafana e integrar com Zabbix
-  hosts: zabbix_server
+  hosts: zabbix_servers
   become: yes
   vars_files: 
     - variaveis.yml
