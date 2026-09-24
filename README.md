@@ -1,6 +1,6 @@
 # 🚀 Automação de Infraestrutura: Zabbix & Grafana com Ansible
 
-Este repositório contém playbooks Ansible modulares e reutilizáveis para automatizar a implantação, configuração e integração de uma stack completa de monitoramento em servidores **Oracle Linux 9**.
+Uma solução de monitoramento **pronta para uso** e totalmente automatizada através de playbooks Ansible modulares. Este projeto provisiona, configura e integra uma stack completa de observabilidade em servidores **Oracle Linux 9** com pouquíssimos comandos.
 
 ---
 
