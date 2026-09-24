@@ -10,7 +10,7 @@
     
     - name: Instalar repositório EPEL (Necessário para dependências Python)
       ansible.builtin.dnf: # Instala, atualiza, remove e lista pacotes e grupos usando o gerenciador de pacotes **dnf**.
-        name: oracle-epel-release-el9
+        name: epel-release
         state: present
 
     - name: instalar o python3-PyMySQL
