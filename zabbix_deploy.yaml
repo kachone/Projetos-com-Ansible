@@ -2,7 +2,8 @@
   hosts: all
   become: yes # executa como root
 
-  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+  vars_files:
+   - variaveis.yml
     
   # INSTALAR REPOSITORIOS
   tasks: # tarefa que sera feita
