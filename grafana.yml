@@ -70,8 +70,8 @@
             username: "{{ zabbix_api_user }}"
           secureJsonData:
             password: "{{ zabbix_api_password }}"
-    handlers:
-      - name: Restart grafana
-        ansible.builtin.service:
-          name: grafana-server
-          state: restarted
+  handlers:
+    - name: Restart grafana
+      ansible.builtin.service:
+        name: grafana-server
+        state: restarted
