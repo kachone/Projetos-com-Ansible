@@ -1,5 +1,5 @@
 - name: Provisionar Zabbix Server 
-  hosts: all
+  hosts: zabbix_servers
   become: yes # executa como root
 
   vars_files:
@@ -39,7 +39,7 @@
           - mysql-server        # banco de dados
           - zabbix-selinux-policy
         state: present 
-        disablerepo: "ol9_developer_EPEL"
+        disablerepo: "epel,ol9_developer_EPEL"
       # garante que o arquivo esteja instalado
 
     - name: Iniciar e habilitar MySQL
@@ -92,7 +92,7 @@
     - name: Configurar senha do banco no Zabbix Server
       lineinfile:
         path: /etc/zabbix/zabbix_server.conf
-        regexp: '^# DBPassword='
+        regexp: '^#?\s*DBPassword='
         line: "DBPassword={{ db_password }}"
 
     - name: Configurar Nginx para o Zabbix
