@@ -1,7 +1,8 @@
 - name: Instalar Grafana e integrar com Zabbix
-  hosts: my_host_01
+  hosts: zabbix_server
   become: yes
-  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+  vars_files: 
+    - variaveis.yml
 
   tasks:
 
@@ -30,6 +31,7 @@
       ansible.builtin.command:
         cmd: grafana-cli plugins install alexanderzobnin-zabbix-app
         creates: /var/lib/grafana/plugins/alexanderzobnin-zabbix-app
+      notify: Restart grafana
 
     - name: Liberar porta 3000 no firewall
       ansible.posix.firewalld:
@@ -68,3 +70,8 @@
             username: "{{ zabbix_api_user }}"
           secureJsonData:
             password: "{{ zabbix_api_password }}"
+    handlers:
+      - name: Restart grafana
+        ansible.builtin.service:
+          name: grafana-server
+          state: restarted
