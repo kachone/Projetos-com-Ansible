@@ -1,5 +1,5 @@
 - name: agent_zabbix #maquina que sera monitorada
-  hosts: zabbix_server # crie um arquivo inventario.ini e coloque as informação do host
+  hosts: zabbix_servers # crie um arquivo inventario.ini e coloque as informação do host
   become: yes
 
   vars_files:
