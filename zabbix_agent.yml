@@ -1,8 +1,9 @@
 - name: agente_zabbix #maquina que sera monitorada
-  hosts: 
+  hosts: zabbix_server # crie um arquivo inventario.ini e coloque as informação do host
   become: yes
 
-  vars_files: /home/kayocr/ANSIBLE/zabbix-grafana/variaveis.yml
+  vars_files:
+    - variaveis.yml 
   
   tasks:
 
@@ -19,6 +20,7 @@
       ansible.builtin.dnf:
         name: zabbix-agent2
         state: present
+        disablerepo: "epel,ol9_developer_EPEL"
 
     - name: Configurar zabbix_agent2.conf
       ansible.builtin.lineinfile:
